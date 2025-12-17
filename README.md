@@ -236,7 +236,7 @@ node-janitor --path ~/projects --older-than 30d --backup
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/node-janitor.git
+git clone https://github.com/patchybean/node-janitor.git
 cd node-janitor
 
 # Install dependencies
@@ -251,7 +251,7 @@ node dist/index.js --help
 
 ## 📄 License
 
-MIT © Your Name
+MIT © Patchy Bean
 
 ---
 

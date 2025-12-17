@@ -35,7 +35,7 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": ""
+        "url": "https://github.com/patchybean/node-janitor.git"
     },
     "engines": {
         "node": ">=18.0.0"
