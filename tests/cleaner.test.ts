@@ -142,7 +142,8 @@ describe('cleaner', () => {
             const result = await cleanNodeModules(folders, { backup: true });
 
             expect(result.backupPath).toBeDefined();
-            expect(result.backupPath).toContain('.node-janitor/backups');
+            // Use path separators for cross-platform compatibility
+            expect(result.backupPath).toMatch(/\.node-janitor[/\\]backups/);
             expect(await fs.pathExists(result.backupPath!)).toBe(true);
 
             // Clean up backup
