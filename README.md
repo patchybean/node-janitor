@@ -3,6 +3,7 @@
 > Smart CLI tool to clean up `node_modules` folders - free up disk space automatically
 
 [![npm version](https://badge.fury.io/js/node-janitor.svg)](https://badge.fury.io/js/node-janitor)
+[![CI](https://github.com/patchybean/node-janitor/actions/workflows/ci.yml/badge.svg)](https://github.com/patchybean/node-janitor/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## ✨ Features
