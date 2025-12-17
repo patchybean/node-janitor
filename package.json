@@ -1,0 +1,69 @@
+{
+    "name": "node-janitor",
+    "version": "1.0.0",
+    "description": "🧹 Smart CLI tool to clean up node_modules folders - free up disk space automatically",
+    "main": "dist/index.js",
+    "bin": {
+        "node-janitor": "./bin/node-janitor.js",
+        "nj": "./bin/node-janitor.js"
+    },
+    "type": "module",
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch",
+        "start": "node dist/index.js",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage",
+        "lint": "eslint src --ext .ts",
+        "lint:fix": "eslint src --ext .ts --fix",
+        "format": "prettier --write \"src/**/*.ts\"",
+        "prepublishOnly": "npm run build"
+    },
+    "keywords": [
+        "node_modules",
+        "cleanup",
+        "disk-space",
+        "cli",
+        "npm",
+        "yarn",
+        "pnpm",
+        "janitor",
+        "cleaner",
+        "devtools"
+    ],
+    "author": "",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": ""
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "files": [
+        "dist",
+        "bin",
+        "README.md"
+    ],
+    "dependencies": {
+        "chalk": "^5.3.0",
+        "cli-progress": "^3.12.0",
+        "cli-table3": "^0.6.5",
+        "commander": "^12.1.0",
+        "cosmiconfig": "^9.0.0",
+        "dayjs": "^1.11.13",
+        "fs-extra": "^11.2.0",
+        "glob": "^11.0.0",
+        "inquirer": "^12.2.0",
+        "ora": "^8.1.1",
+        "p-limit": "^6.1.0"
+    },
+    "devDependencies": {
+        "@types/cli-progress": "^3.11.6",
+        "@types/fs-extra": "^11.0.4",
+        "@types/inquirer": "^9.0.7",
+        "@types/node": "^22.10.2",
+        "typescript": "^5.7.2",
+        "vitest": "^2.1.8"
+    }
+}
