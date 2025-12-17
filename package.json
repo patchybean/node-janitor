@@ -4,8 +4,8 @@
     "description": "🧹 Smart CLI tool to clean up node_modules folders - free up disk space automatically",
     "main": "dist/index.js",
     "bin": {
-        "node-janitor": "./bin/node-janitor.js",
-        "nj": "./bin/node-janitor.js"
+        "node-janitor": "dist/index.js",
+        "nj": "dist/index.js"
     },
     "type": "module",
     "scripts": {
@@ -35,7 +35,7 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/patchybean/node-janitor.git"
+        "url": "git+https://github.com/patchybean/node-janitor.git"
     },
     "homepage": "https://github.com/patchybean/node-janitor#readme",
     "bugs": {
@@ -46,7 +46,6 @@
     },
     "files": [
         "dist",
-        "bin",
         "README.md"
     ],
     "dependencies": {
