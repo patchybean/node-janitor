@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import { scanNodeModules, calculateTotals, filterByAge } from './core/scanner.js';
 import { cleanNodeModules } from './core/cleaner.js';
 import { deepClean } from './core/deep-cleaner.js';
+import { loadConfig, mergeOptions } from './core/config.js';
 import { createSpinner } from './ui/spinner.js';
 import { createFoldersTable, createSummaryTable, createBreakdownTable } from './ui/table.js';
 import { createProgressBar, updateProgress, stopProgress } from './ui/progress.js';
@@ -58,6 +59,7 @@ export function createProgram(): Command {
         .option('--json', 'Output as JSON')
         .option('--exclude <patterns>', 'Exclude patterns (comma-separated)')
         .option('--include <patterns>', 'Include only matching patterns (comma-separated)')
+        .option('-c, --config <path>', 'Path to config file')
         .action(async (options) => {
             await mainAction(options);
         });
@@ -81,11 +83,15 @@ export function createProgram(): Command {
  * Main action handler
  */
 async function mainAction(options: GlobalOptions & Record<string, unknown>): Promise<void> {
+    // Load config file
+    const config = await loadConfig(options.config as string | undefined);
+    const mergedOptions = mergeOptions(options, config);
+
     // Configure logger
     logger.configure({
-        verbose: options.verbose as boolean,
-        debug: options.debug as boolean,
-        silent: options.silent as boolean,
+        verbose: mergedOptions.verbose as boolean,
+        debug: mergedOptions.debug as boolean,
+        silent: mergedOptions.silent as boolean,
     });
 
     // Interactive mode
