@@ -17,6 +17,11 @@
 - 📊 **Reports** - Detailed analytics
 - ⚡ **Fast Mode** - Native OS commands for speed
 - 🔄 **CI/CD Ready** - Silent mode with JSON output
+- ⚙️ **Config File** - Persistent settings with `.janitorrc`
+- 🔀 **Git-aware** - Skip repos with uncommitted changes
+- 🌍 **Multi-language** - 8 languages supported
+- 👀 **Watch Mode** - Continuous monitoring
+- 📅 **Scheduled Cleanup** - Cron-style automation
 
 ## 📦 Installation
 
@@ -151,6 +156,79 @@ node-janitor --json
 ```bash
 # Exclude specific folders
 node-janitor --exclude "important-project,client-work"
+
+# Include only matching patterns (whitelist)
+node-janitor --include "work-*,client-*"
+```
+
+### Git-aware Cleanup
+
+```bash
+# Skip repos with uncommitted changes
+node-janitor --skip-dirty-git
+
+# Only process folders inside git repos
+node-janitor --git-only
+```
+
+### Config File
+
+Create `.janitorrc` in your home directory or project:
+
+```json
+{
+  "exclude": ["important-project"],
+  "defaultOlderThan": "30d",
+  "defaultPath": "~/projects",
+  "lang": "vi"
+}
+```
+
+Use custom config:
+```bash
+node-janitor --config ~/.my-janitor-config.json
+```
+
+### Multi-language Support
+
+```bash
+# Vietnamese
+node-janitor --lang vi
+
+# Chinese
+node-janitor --lang zh
+
+# Japanese  
+node-janitor --lang ja
+
+# Available: en, vi, zh, ja, ko, es, fr, de
+```
+
+### Watch Mode
+
+Continuously monitor and clean:
+
+```bash
+# Watch with 60s interval
+node-janitor watch --interval 60 --older-than 30d
+
+# Auto-clean when found
+node-janitor watch --auto-clean --older-than 60d
+```
+
+### Scheduled Cleanup
+
+Cron-style scheduling:
+
+```bash
+# Daily cleanup at midnight
+node-janitor schedule --daily --older-than 30d
+
+# Weekly on Sunday
+node-janitor schedule --weekly
+
+# Custom cron expression
+node-janitor schedule --cron "0 0 * * *" --older-than 60d
 ```
 
 ## 📋 All Options
@@ -176,6 +254,11 @@ node-janitor --exclude "important-project,client-work"
 | `--silent` | Silent mode (CI/CD) |
 | `--json` | JSON output |
 | `--exclude <patterns>` | Exclude patterns (comma-separated) |
+| `--include <patterns>` | Include only matching patterns |
+| `-c, --config <path>` | Config file path |
+| `--skip-dirty-git` | Skip repos with uncommitted changes |
+| `--git-only` | Only process git repos |
+| `--lang <code>` | Language (en, vi, zh, ja, ko, es, fr, de) |
 
 ## 🎯 Examples
 
