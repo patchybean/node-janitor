@@ -18,6 +18,7 @@ import {
 } from './ui/prompts.js';
 import logger from './utils/logger.js';
 import { formatBytes, parseDuration } from './utils/formatter.js';
+import { setLanguage } from './utils/i18n.js';
 import type { NodeModulesInfo, GlobalOptions } from './types/index.js';
 
 const VERSION = '1.0.1';
@@ -62,6 +63,7 @@ export function createProgram(): Command {
         .option('-c, --config <path>', 'Path to config file')
         .option('--skip-dirty-git', 'Skip folders with uncommitted git changes')
         .option('--git-only', 'Only process folders inside git repositories')
+        .option('--lang <language>', 'Language for output (en, vi, zh, ja, ko, es, fr, de)')
         .action(async (options) => {
             await mainAction(options);
         });
@@ -88,6 +90,11 @@ async function mainAction(options: GlobalOptions & Record<string, unknown>): Pro
     // Load config file
     const config = await loadConfig(options.config as string | undefined);
     const mergedOptions = mergeOptions(options, config);
+
+    // Set language
+    if (mergedOptions.lang) {
+        setLanguage(mergedOptions.lang as string);
+    }
 
     // Configure logger
     logger.configure({
