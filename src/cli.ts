@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import { scanNodeModules, calculateTotals, filterByAge, filterByGitStatus } from './core/scanner.js';
 import { cleanNodeModules } from './core/cleaner.js';
 import { deepClean } from './core/deep-cleaner.js';
+import { startWatch } from './commands/watch.js';
 import { loadConfig, mergeOptions } from './core/config.js';
 import { createSpinner } from './ui/spinner.js';
 import { createFoldersTable, createSummaryTable, createBreakdownTable } from './ui/table.js';
@@ -78,6 +79,20 @@ export function createProgram(): Command {
         .option('--json', 'Output as JSON')
         .action(async (options) => {
             await reportAction(options);
+        });
+
+    // Watch sub-command
+    program
+        .command('watch')
+        .description('🔄 Watch mode - continuously monitor and clean')
+        .option('-p, --path <path>', 'Directory to watch', process.cwd())
+        .option('-d, --depth <number>', 'Maximum depth to scan', parseInt)
+        .option('--older-than <duration>', 'Only clean folders older than (e.g., 30d)')
+        .option('--interval <seconds>', 'Scan interval in seconds', parseInt)
+        .option('--auto-clean', 'Automatically clean found folders')
+        .option('--dry-run', 'Preview only, do not delete')
+        .action(async (options) => {
+            await watchAction(options);
         });
 
     return program;
@@ -449,4 +464,20 @@ async function reportAction(options: Record<string, unknown>): Promise<void> {
     if (totals.totalSize > 1024 * 1024 * 1024) { // > 1GB
         console.log(chalk.yellow(`  → Run ${chalk.cyan('node-janitor --deep-clean')} to save ~40% more space`));
     }
+}
+
+/**
+ * Watch action handler
+ */
+async function watchAction(options: Record<string, unknown>): Promise<void> {
+    const intervalSeconds = (options.interval as number) || 60;
+
+    await startWatch({
+        path: (options.path as string) || process.cwd(),
+        depth: options.depth as number | undefined,
+        olderThan: options.olderThan as string | undefined,
+        dryRun: options.dryRun as boolean,
+        interval: intervalSeconds * 1000,
+        onClean: options.autoClean as boolean,
+    });
 }
