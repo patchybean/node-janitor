@@ -4,6 +4,7 @@ import { scanNodeModules, calculateTotals, filterByAge, filterByGitStatus } from
 import { cleanNodeModules } from './core/cleaner.js';
 import { deepClean } from './core/deep-cleaner.js';
 import { startWatch } from './commands/watch.js';
+import { startSchedule, cronPresets } from './commands/schedule.js';
 import { loadConfig, mergeOptions } from './core/config.js';
 import { createSpinner } from './ui/spinner.js';
 import { createFoldersTable, createSummaryTable, createBreakdownTable } from './ui/table.js';
@@ -93,6 +94,22 @@ export function createProgram(): Command {
         .option('--dry-run', 'Preview only, do not delete')
         .action(async (options) => {
             await watchAction(options);
+        });
+
+    // Schedule sub-command
+    program
+        .command('schedule')
+        .description('📅 Scheduled cleanup with cron expressions')
+        .option('-p, --path <path>', 'Directory to clean', process.cwd())
+        .option('-d, --depth <number>', 'Maximum depth to scan', parseInt)
+        .option('--cron <expression>', 'Cron expression (e.g., "0 0 * * *" for daily)')
+        .option('--daily', 'Run daily at midnight')
+        .option('--weekly', 'Run weekly on Sunday')
+        .option('--monthly', 'Run monthly on 1st')
+        .option('--older-than <duration>', 'Only clean folders older than (e.g., 30d)')
+        .option('--dry-run', 'Preview only, do not delete')
+        .action(async (options) => {
+            await scheduleAction(options);
         });
 
     return program;
@@ -479,5 +496,33 @@ async function watchAction(options: Record<string, unknown>): Promise<void> {
         dryRun: options.dryRun as boolean,
         interval: intervalSeconds * 1000,
         onClean: options.autoClean as boolean,
+    });
+}
+
+/**
+ * Schedule action handler
+ */
+async function scheduleAction(options: Record<string, unknown>): Promise<void> {
+    // Determine cron expression from presets or custom
+    let cronExpression = options.cron as string;
+    if (!cronExpression) {
+        if (options.daily) {
+            cronExpression = cronPresets.daily;
+        } else if (options.weekly) {
+            cronExpression = cronPresets.weekly;
+        } else if (options.monthly) {
+            cronExpression = cronPresets.monthly;
+        } else {
+            // Default to daily
+            cronExpression = cronPresets.daily;
+        }
+    }
+
+    startSchedule({
+        path: (options.path as string) || process.cwd(),
+        depth: options.depth as number | undefined,
+        cron: cronExpression,
+        olderThan: options.olderThan as string | undefined,
+        dryRun: options.dryRun as boolean,
     });
 }
