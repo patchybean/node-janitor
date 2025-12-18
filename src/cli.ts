@@ -19,7 +19,7 @@ import logger from './utils/logger.js';
 import { formatBytes, parseDuration } from './utils/formatter.js';
 import type { NodeModulesInfo, GlobalOptions } from './types/index.js';
 
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 
 // ASCII Art Banner
 const BANNER = chalk.cyan(`
@@ -57,6 +57,7 @@ export function createProgram(): Command {
         .option('--silent', 'Silent mode (for CI/CD)')
         .option('--json', 'Output as JSON')
         .option('--exclude <patterns>', 'Exclude patterns (comma-separated)')
+        .option('--include <patterns>', 'Include only matching patterns (comma-separated)')
         .action(async (options) => {
             await mainAction(options);
         });
@@ -103,6 +104,9 @@ async function mainAction(options: GlobalOptions & Record<string, unknown>): Pro
     const excludePatterns = options.exclude
         ? (options.exclude as string).split(',').map(s => s.trim())
         : [];
+    const includePatterns = options.include
+        ? (options.include as string).split(',').map(s => s.trim())
+        : [];
 
     const spinner = createSpinner(`🔍 Scanning ${scanPath}...`);
     spinner.start();
@@ -114,6 +118,7 @@ async function mainAction(options: GlobalOptions & Record<string, unknown>): Pro
             depth: options.depth as number | undefined,
             quick: options.quick as boolean,
             excludePatterns,
+            includePatterns,
         });
         spinner.succeed(`Found ${folders.length} node_modules folders`);
     } catch (error) {

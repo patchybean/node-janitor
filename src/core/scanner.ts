@@ -102,10 +102,25 @@ export async function scanNodeModules(
 
     await scan(startPath, 0);
 
-    // Sort by size descending
-    results.sort((a, b) => b.size - a.size);
+    // Apply include pattern filter (whitelist)
+    let filteredResults = results;
+    if (options.includePatterns && options.includePatterns.length > 0) {
+        filteredResults = results.filter(folder => {
+            return options.includePatterns!.some(pattern => {
+                if (pattern.includes('*')) {
+                    const regex = new RegExp(pattern.replace(/\*/g, '.*'));
+                    return regex.test(folder.projectPath) || regex.test(folder.path);
+                }
+                return folder.projectPath.includes(pattern) || folder.path.includes(pattern);
+            });
+        });
+        logger.debug(`Include filter: ${results.length} -> ${filteredResults.length} folders`);
+    }
 
-    return results;
+    // Sort by size descending
+    filteredResults.sort((a, b) => b.size - a.size);
+
+    return filteredResults;
 }
 
 /**
