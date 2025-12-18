@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { scanNodeModules, calculateTotals, filterByAge } from './core/scanner.js';
+import { scanNodeModules, calculateTotals, filterByAge, filterByGitStatus } from './core/scanner.js';
 import { cleanNodeModules } from './core/cleaner.js';
 import { deepClean } from './core/deep-cleaner.js';
 import { loadConfig, mergeOptions } from './core/config.js';
@@ -60,6 +60,8 @@ export function createProgram(): Command {
         .option('--exclude <patterns>', 'Exclude patterns (comma-separated)')
         .option('--include <patterns>', 'Include only matching patterns (comma-separated)')
         .option('-c, --config <path>', 'Path to config file')
+        .option('--skip-dirty-git', 'Skip folders with uncommitted git changes')
+        .option('--git-only', 'Only process folders inside git repositories')
         .action(async (options) => {
             await mainAction(options);
         });
@@ -140,9 +142,18 @@ async function mainAction(options: GlobalOptions & Record<string, unknown>): Pro
 
     // Apply age filter for display
     let displayFolders = folders;
-    if (options.olderThan) {
-        const days = parseDuration(options.olderThan as string);
+    if (mergedOptions.olderThan) {
+        const days = parseDuration(mergedOptions.olderThan as string);
         displayFolders = filterByAge(folders, days);
+    }
+
+    // Apply git filters
+    if (mergedOptions.skipDirtyGit || mergedOptions.gitOnly) {
+        displayFolders = filterByGitStatus(
+            displayFolders,
+            mergedOptions.skipDirtyGit as boolean,
+            mergedOptions.gitOnly as boolean
+        );
     }
 
     // JSON output

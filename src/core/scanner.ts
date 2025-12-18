@@ -8,6 +8,7 @@ import {
     fileExists,
 } from '../utils/fs-utils.js';
 import { getAgeDays } from '../utils/formatter.js';
+import { getGitStatus } from '../utils/git-utils.js';
 import logger from '../utils/logger.js';
 
 // Folders to skip when scanning
@@ -151,6 +152,9 @@ async function getNodeModulesInfo(
         fileExists(path.join(projectPath, 'pnpm-lock.yaml')),
     ]);
 
+    // Get git status
+    const gitStatus = await getGitStatus(projectPath);
+
     return {
         path: nodeModulesPath,
         projectPath,
@@ -161,6 +165,7 @@ async function getNodeModulesInfo(
         hasYarnLock,
         hasPnpmLock,
         ageDays,
+        gitStatus,
     };
 }
 
@@ -212,6 +217,25 @@ export function filterWithLockfile(folders: NodeModulesInfo[]): NodeModulesInfo[
 }
 
 /**
+ * Filter folders by git status (skip dirty repos)
+ */
+export function filterByGitStatus(
+    folders: NodeModulesInfo[],
+    skipDirty = false,
+    onlyInGitRepo = false
+): NodeModulesInfo[] {
+    return folders.filter(folder => {
+        if (onlyInGitRepo && !folder.gitStatus?.isGitRepo) {
+            return false;
+        }
+        if (skipDirty && folder.gitStatus?.isDirty) {
+            return false;
+        }
+        return true;
+    });
+}
+
+/**
  * Calculate totals
  */
 export function calculateTotals(folders: NodeModulesInfo[]): {
@@ -237,6 +261,7 @@ export default {
     scanNodeModules,
     filterByAge,
     filterBySize,
+    filterByGitStatus,
     filterWithLockfile,
     calculateTotals,
 };
