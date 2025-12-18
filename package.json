@@ -1,6 +1,6 @@
 {
     "name": "node-janitor",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "description": "🧹 Smart CLI tool to clean up node_modules folders - free up disk space automatically",
     "main": "dist/index.js",
     "bin": {
