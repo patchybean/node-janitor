@@ -74,6 +74,7 @@ nav:
     - Configuration: configuration.md
     - Multi-language: i18n.md
     - CI/CD Integration: cicd.md
+    - Performance: benchmark.md
   - Changelog: changelog.md
 
 extra:

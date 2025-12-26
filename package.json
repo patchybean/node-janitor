@@ -17,6 +17,7 @@
         "lint": "eslint src --ext .ts",
         "lint:fix": "eslint src --ext .ts --fix",
         "format": "prettier --write \"src/**/*.ts\"",
+        "benchmark": "npm run build && npx tsx benchmark/run.ts",
         "prepublishOnly": "npm run build"
     },
     "keywords": [
