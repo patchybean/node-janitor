@@ -1,0 +1,87 @@
+site_name: Node Janitor
+site_description: 🧹 Smart CLI tool to clean up node_modules folders - free up disk space automatically
+site_url: https://node-janitor.readthedocs.io
+repo_url: https://github.com/patchybean/node-janitor
+repo_name: patchybean/node-janitor
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: cyan
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: cyan
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+  icon:
+    repo: fontawesome/brands/github
+  logo: assets/logo.png
+  favicon: assets/favicon.ico
+
+plugins:
+  - search
+  - minify:
+      minify_html: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - tables
+  - toc:
+      permalink: true
+  - attr_list
+  - md_in_html
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: installation.md
+    - Quick Start: quickstart.md
+  - Commands:
+    - Overview: commands/index.md
+    - Scan & Clean: commands/clean.md
+    - Interactive TUI: commands/tui.md
+    - Watch Mode: commands/watch.md
+    - Scheduled Cleanup: commands/schedule.md
+    - Reports: commands/report.md
+  - Advanced:
+    - Configuration: configuration.md
+    - Multi-language: i18n.md
+    - CI/CD Integration: cicd.md
+  - Changelog: changelog.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/patchybean/node-janitor
+    - icon: fontawesome/brands/npm
+      link: https://www.npmjs.com/package/node-janitor
+  generator: false
+
+copyright: Copyright &copy; 2024 Patchy Bean
