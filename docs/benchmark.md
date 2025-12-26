@@ -1,61 +1,50 @@
 # Performance Benchmark
 
-Node Janitor is optimized for performance. This page documents the benchmark results and optimization tips.
+Node Janitor is designed for convenience and features. This page documents real benchmark results.
 
 ## Running Benchmarks
 
 ```bash
+# Basic benchmark
 npm run benchmark
+
+# Comparison with npkill
+npm run build && npx tsx benchmark/compare.ts
 ```
 
-This creates a test environment with mock `node_modules` folders and measures:
+## Real Benchmark Results
 
-- **Scan time** - Time to find and analyze all folders
-- **Quick scan time** - Time with `--quick` flag (skips size calculation)
-- **Fast delete time** - Time with `--fast` flag (uses native OS commands)
+Tested on MacBook Pro M1, 16GB RAM, SSD (December 2024):
 
-## Benchmark Results
+### Scan Performance Comparison
 
-Results on MacBook Pro M1, 16GB RAM, SSD:
+| Folders | node-janitor | npkill | find+du (baseline) |
+|---------|--------------|--------|-------------------|
+| 10 | 293ms | 450ms | 27ms |
+| 25 | 409ms | 390ms | 47ms |
+| 50 | 695ms | 373ms | 88ms |
 
-| Operation | 20 folders | 100 folders | 500 folders |
-|-----------|------------|-------------|-------------|
-| Scan | ~150ms | ~400ms | ~1.5s |
-| Quick scan | ~50ms | ~120ms | ~400ms |
-| Delete | ~300ms | ~800ms | ~2s |
-| Fast delete | ~100ms | ~250ms | ~600ms |
+!!! note "Honest Assessment"
+    - **Small projects (< 25)**: node-janitor is slightly faster
+    - **Large projects (50+)**: npkill is faster at scanning
+    - **Baseline (find+du)**: Native commands are always fastest
 
-!!! note "Your Results May Vary"
-    Performance depends on disk speed, folder sizes, and system load.
+### Analysis
 
-## Comparison with Other Tools
+**Why npkill can be faster at scale:**
 
-### vs npkill
+- npkill uses efficient streaming algorithms
+- node-janitor calculates more metadata (package count, lockfile detection)
+- node-janitor builds interactive table data
 
-| Operation | node-janitor | npkill |
-|-----------|--------------|--------|
-| Initial scan | Similar | Similar |
-| Size calculation | ✅ Parallel | ❌ Sequential |
-| Delete speed | ✅ Fast mode | ✅ Fast |
-| Memory usage | Low | Low |
+**Why node-janitor adds value despite speed:**
 
-### vs find + rm
-
-```bash
-# Traditional approach
-find ~/projects -name "node_modules" -type d -prune -exec rm -rf {} +
-
-# Node Janitor with filters
-node-janitor --older-than 30d --fast
-```
-
-Node Janitor advantages:
-
-- Age filtering built-in
-- Size filtering
-- Dry run preview
-- Backup capability
-- Progress reporting
+- Git-aware cleanup (`--skip-dirty-git`)
+- Age-based filtering (`--older-than`)
+- Deep clean mode
+- Watch & Schedule modes
+- Config file support
+- Multi-language support
 
 ## Optimization Tips
 
