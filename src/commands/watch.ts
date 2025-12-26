@@ -15,7 +15,7 @@ export interface WatchOptions {
     onClean?: boolean; // auto-clean when found
 }
 
-interface WatchState {
+export interface WatchState {
     isWatching: boolean;
     lastScan: Date | null;
     foldersFound: number;
@@ -24,20 +24,41 @@ interface WatchState {
 }
 
 /**
- * Start watching a directory for node_modules folders
+ * Create initial watch state
  */
-export async function startWatch(options: WatchOptions): Promise<void> {
-    const watchPath = path.resolve(options.path);
-    const interval = options.interval || 60000; // Default 1 minute
-    const olderThanDays = options.olderThan ? parseDuration(options.olderThan) : undefined;
-
-    const state: WatchState = {
+export function createInitialWatchState(): WatchState {
+    return {
         isWatching: true,
         lastScan: null,
         foldersFound: 0,
         totalCleaned: 0,
         totalFreed: 0,
     };
+}
+
+/**
+ * Parse watch interval with default
+ */
+export function parseWatchInterval(interval?: number): number {
+    return interval || 60000; // Default 1 minute
+}
+
+/**
+ * Parse olderThan to days
+ */
+export function parseOlderThanDays(olderThan?: string): number | undefined {
+    return olderThan ? parseDuration(olderThan) : undefined;
+}
+
+/**
+ * Start watching a directory for node_modules folders
+ */
+export async function startWatch(options: WatchOptions): Promise<void> {
+    const watchPath = path.resolve(options.path);
+    const interval = parseWatchInterval(options.interval);
+    const olderThanDays = parseOlderThanDays(options.olderThan);
+
+    const state = createInitialWatchState();
 
     console.log(chalk.cyan('🔄 Watch Mode Started'));
     console.log(chalk.gray(`Watching: ${watchPath}`));
@@ -73,14 +94,14 @@ export async function startWatch(options: WatchOptions): Promise<void> {
 }
 
 /**
- * Perform a scan and optionally clean
+ * Perform a scan and optionally clean (exported for testing)
  */
-async function performScan(
+export async function performScan(
     watchPath: string,
     options: WatchOptions,
     olderThanDays: number | undefined,
     state: WatchState
-): Promise<void> {
+): Promise<{ found: number; cleaned: number; freed: number }> {
     const timestamp = new Date().toLocaleTimeString();
     process.stdout.write(chalk.gray(`[${timestamp}] Scanning... `));
 
@@ -101,7 +122,7 @@ async function performScan(
 
         if (folders.length === 0) {
             console.log(chalk.green('✓ No matching folders'));
-            return;
+            return { found: 0, cleaned: 0, freed: 0 };
         }
 
         const totals = calculateTotals(folders);
@@ -109,7 +130,8 @@ async function performScan(
 
         // Auto-clean if enabled
         if (options.onClean && !options.dryRun) {
-            await performAutoClean(folders, state);
+            const cleanResult = await performAutoClean(folders, state);
+            return { found: folders.length, ...cleanResult };
         } else {
             // Just list folders
             folders.slice(0, 5).forEach(f => {
@@ -118,32 +140,41 @@ async function performScan(
             if (folders.length > 5) {
                 console.log(chalk.gray(`  ... and ${folders.length - 5} more`));
             }
+            return { found: folders.length, cleaned: 0, freed: 0 };
         }
     } catch (error) {
         console.log(chalk.red('✗ Scan failed'));
         logger.debug(error instanceof Error ? error.message : String(error));
+        return { found: 0, cleaned: 0, freed: 0 };
     }
 }
 
 /**
- * Auto-clean found folders
+ * Auto-clean found folders (exported for testing)
  */
-async function performAutoClean(
+export async function performAutoClean(
     folders: NodeModulesInfo[],
     state: WatchState
-): Promise<void> {
+): Promise<{ cleaned: number; freed: number }> {
     try {
         const result = await cleanNodeModules(folders, { fast: true });
         state.totalCleaned += result.deletedCount;
         state.totalFreed += result.freedBytes;
 
         console.log(chalk.green(`  ✓ Cleaned ${result.deletedCount} folders (${formatBytes(result.freedBytes)})`));
+        return { cleaned: result.deletedCount, freed: result.freedBytes };
     } catch (error) {
         console.log(chalk.red('  ✗ Clean failed'));
         logger.debug(error instanceof Error ? error.message : String(error));
+        return { cleaned: 0, freed: 0 };
     }
 }
 
 export default {
     startWatch,
+    performScan,
+    performAutoClean,
+    createInitialWatchState,
+    parseWatchInterval,
+    parseOlderThanDays,
 };

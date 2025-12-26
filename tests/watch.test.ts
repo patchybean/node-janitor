@@ -3,7 +3,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
 
-// Mock the dependencies
+// Mock dependencies
 vi.mock('../src/core/scanner.js', () => ({
     scanNodeModules: vi.fn(),
     calculateTotals: vi.fn(),
@@ -13,260 +13,272 @@ vi.mock('../src/core/cleaner.js', () => ({
     cleanNodeModules: vi.fn(),
 }));
 
-vi.mock('../src/utils/formatter.js', () => ({
-    formatBytes: vi.fn((bytes: number) => `${bytes} bytes`),
-    parseDuration: vi.fn((duration: string) => {
-        const match = duration.match(/^(\d+)([dmwy])$/);
-        if (!match) return 0;
-        return parseInt(match[1]);
-    }),
+vi.mock('chalk', () => ({
+    default: {
+        cyan: (s: string) => s,
+        gray: (s: string) => s,
+        green: (s: string) => s,
+        yellow: (s: string) => s,
+        red: (s: string) => s,
+    },
 }));
 
-// Import after mocking
 import { scanNodeModules, calculateTotals } from '../src/core/scanner.js';
 import { cleanNodeModules } from '../src/core/cleaner.js';
-import { parseDuration } from '../src/utils/formatter.js';
+import {
+    createInitialWatchState,
+    parseWatchInterval,
+    parseOlderThanDays,
+    performScan,
+    performAutoClean,
+    type WatchState,
+    type WatchOptions,
+} from '../src/commands/watch.js';
 import type { NodeModulesInfo } from '../src/types/index.js';
 
-describe('watch command utilities', () => {
-    beforeEach(() => {
+describe('watch command', () => {
+    let testDir: string;
+    let consoleLogSpy: ReturnType<typeof vi.spyOn>;
+    let stdoutWriteSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(async () => {
+        testDir = path.join(os.tmpdir(), `watch-test-${Date.now()}`);
+        await fs.ensureDir(testDir);
         vi.clearAllMocks();
+        consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => { });
+        stdoutWriteSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
     });
 
-    describe('WatchOptions interface', () => {
-        it('should accept valid watch options', () => {
-            const options = {
-                path: '/test/path',
-                depth: 5,
-                olderThan: '30d',
-                dryRun: true,
-                interval: 60000,
-                onClean: false,
-            };
-
-            expect(options.path).toBe('/test/path');
-            expect(options.depth).toBe(5);
-            expect(options.olderThan).toBe('30d');
-            expect(options.dryRun).toBe(true);
-            expect(options.interval).toBe(60000);
-            expect(options.onClean).toBe(false);
-        });
-
-        it('should have optional properties', () => {
-            const minimalOptions = {
-                path: '/test/path',
-            };
-
-            expect(minimalOptions.path).toBeDefined();
-        });
+    afterEach(async () => {
+        await fs.remove(testDir);
+        consoleLogSpy.mockRestore();
+        stdoutWriteSpy.mockRestore();
     });
 
-    describe('WatchState tracking', () => {
-        it('should initialize with default values', () => {
-            const state = {
-                isWatching: true,
-                lastScan: null,
-                foldersFound: 0,
-                totalCleaned: 0,
-                totalFreed: 0,
-            };
-
+    describe('createInitialWatchState', () => {
+        it('should create initial state with isWatching true', () => {
+            const state = createInitialWatchState();
             expect(state.isWatching).toBe(true);
             expect(state.lastScan).toBeNull();
             expect(state.foldersFound).toBe(0);
             expect(state.totalCleaned).toBe(0);
             expect(state.totalFreed).toBe(0);
         });
+    });
 
-        it('should track state changes', () => {
-            const state = {
-                isWatching: true,
-                lastScan: null as Date | null,
-                foldersFound: 0,
-                totalCleaned: 0,
-                totalFreed: 0,
-            };
+    describe('parseWatchInterval', () => {
+        it('should return default 60000ms for undefined', () => {
+            expect(parseWatchInterval(undefined)).toBe(60000);
+        });
 
-            // Simulate scan
-            state.lastScan = new Date();
-            state.foldersFound = 5;
+        it('should return provided interval', () => {
+            expect(parseWatchInterval(30000)).toBe(30000);
+        });
 
+        it('should return default for 0', () => {
+            expect(parseWatchInterval(0)).toBe(60000);
+        });
+    });
+
+    describe('parseOlderThanDays', () => {
+        it('should return undefined for undefined input', () => {
+            expect(parseOlderThanDays(undefined)).toBeUndefined();
+        });
+
+        it('should parse 30d format', () => {
+            expect(parseOlderThanDays('30d')).toBe(30);
+        });
+
+        it('should parse 2w format to days', () => {
+            expect(parseOlderThanDays('2w')).toBe(14);
+        });
+    });
+
+    describe('performScan', () => {
+        const mockFolders: NodeModulesInfo[] = [
+            {
+                path: '/test/project1/node_modules',
+                projectPath: '/test/project1',
+                size: 100000,
+                lastModified: new Date(),
+                packageCount: 50,
+                hasPackageLock: true,
+                hasYarnLock: false,
+                hasPnpmLock: false,
+                ageDays: 45,
+            },
+            {
+                path: '/test/project2/node_modules',
+                projectPath: '/test/project2',
+                size: 200000,
+                lastModified: new Date(),
+                packageCount: 100,
+                hasPackageLock: false,
+                hasYarnLock: true,
+                hasPnpmLock: false,
+                ageDays: 60,
+            },
+        ];
+
+        it('should return zeros when no folders found', async () => {
+            vi.mocked(scanNodeModules).mockResolvedValue([]);
+
+            const state = createInitialWatchState();
+            const options: WatchOptions = { path: testDir };
+
+            const result = await performScan(testDir, options, undefined, state);
+
+            expect(result).toEqual({ found: 0, cleaned: 0, freed: 0 });
+            expect(state.foldersFound).toBe(0);
             expect(state.lastScan).toBeInstanceOf(Date);
-            expect(state.foldersFound).toBe(5);
-
-            // Simulate cleanup
-            state.totalCleaned += 3;
-            state.totalFreed += 1000000;
-
-            expect(state.totalCleaned).toBe(3);
-            expect(state.totalFreed).toBe(1000000);
         });
-    });
 
-    describe('scanner integration', () => {
-        it('should call scanNodeModules with correct options', async () => {
-            const mockFolders: NodeModulesInfo[] = [
-                {
-                    path: '/test/node_modules',
-                    projectPath: '/test',
-                    size: 1000000,
-                    lastModified: new Date(),
-                    packageCount: 100,
-                    hasPackageLock: true,
-                    hasYarnLock: false,
-                    hasPnpmLock: false,
-                    ageDays: 30,
-                },
-            ];
-
+        it('should find folders without cleaning (onClean false)', async () => {
             vi.mocked(scanNodeModules).mockResolvedValue(mockFolders);
-            vi.mocked(calculateTotals).mockReturnValue({
-                totalFolders: 1,
-                totalSize: 1000000,
-                oldestAge: 30,
-                newestAge: 30,
-            });
+            vi.mocked(calculateTotals).mockReturnValue({ totalSize: 300000, count: 2, averageSize: 150000 });
 
-            const result = await scanNodeModules({
-                path: '/test',
-                depth: 3,
-                quick: true,
-            });
+            const state = createInitialWatchState();
+            const options: WatchOptions = { path: testDir, onClean: false };
 
-            expect(scanNodeModules).toHaveBeenCalledWith({
-                path: '/test',
-                depth: 3,
-                quick: true,
-            });
-            expect(result).toHaveLength(1);
+            const result = await performScan(testDir, options, undefined, state);
+
+            expect(result.found).toBe(2);
+            expect(result.cleaned).toBe(0);
+            expect(cleanNodeModules).not.toHaveBeenCalled();
         });
 
-        it('should filter folders by age', async () => {
-            const mockFolders: NodeModulesInfo[] = [
-                { path: '/a/node_modules', projectPath: '/a', size: 100, lastModified: new Date(), packageCount: 10, hasPackageLock: true, hasYarnLock: false, hasPnpmLock: false, ageDays: 10 },
-                { path: '/b/node_modules', projectPath: '/b', size: 200, lastModified: new Date(), packageCount: 20, hasPackageLock: true, hasYarnLock: false, hasPnpmLock: false, ageDays: 50 },
-                { path: '/c/node_modules', projectPath: '/c', size: 300, lastModified: new Date(), packageCount: 30, hasPackageLock: true, hasYarnLock: false, hasPnpmLock: false, ageDays: 100 },
-            ];
-
+        it('should auto-clean when onClean is true', async () => {
             vi.mocked(scanNodeModules).mockResolvedValue(mockFolders);
-
-            const folders = await scanNodeModules({ path: '/test', quick: true });
-            const olderThanDays = 30;
-            const filtered = folders.filter(f => f.ageDays >= olderThanDays);
-
-            expect(filtered).toHaveLength(2);
-            expect(filtered[0].ageDays).toBe(50);
-            expect(filtered[1].ageDays).toBe(100);
-        });
-    });
-
-    describe('cleaner integration', () => {
-        it('should clean folders with fast mode', async () => {
-            const mockFolders: NodeModulesInfo[] = [
-                { path: '/a/node_modules', projectPath: '/a', size: 100, lastModified: new Date(), packageCount: 10, hasPackageLock: true, hasYarnLock: false, hasPnpmLock: false, ageDays: 50 },
-            ];
-
+            vi.mocked(calculateTotals).mockReturnValue({ totalSize: 300000, count: 2, averageSize: 150000 });
             vi.mocked(cleanNodeModules).mockResolvedValue({
-                deletedCount: 1,
-                freedBytes: 100,
-                deletedPaths: ['/a/node_modules'],
+                deletedCount: 2,
+                freedBytes: 300000,
+                deletedPaths: ['/test/project1/node_modules', '/test/project2/node_modules'],
                 errors: [],
             });
 
-            const result = await cleanNodeModules(mockFolders, { fast: true });
+            const state = createInitialWatchState();
+            const options: WatchOptions = { path: testDir, onClean: true };
 
-            expect(cleanNodeModules).toHaveBeenCalledWith(mockFolders, { fast: true });
-            expect(result.deletedCount).toBe(1);
-            expect(result.freedBytes).toBe(100);
-            expect(result.errors).toHaveLength(0);
+            const result = await performScan(testDir, options, undefined, state);
+
+            expect(result.found).toBe(2);
+            expect(result.cleaned).toBe(2);
+            expect(result.freed).toBe(300000);
+            expect(state.totalCleaned).toBe(2);
+            expect(state.totalFreed).toBe(300000);
         });
 
-        it('should handle cleaning errors', async () => {
-            const mockFolders: NodeModulesInfo[] = [
-                { path: '/a/node_modules', projectPath: '/a', size: 100, lastModified: new Date(), packageCount: 10, hasPackageLock: true, hasYarnLock: false, hasPnpmLock: false, ageDays: 50 },
-            ];
+        it('should not clean in dry run mode even with onClean', async () => {
+            vi.mocked(scanNodeModules).mockResolvedValue(mockFolders);
+            vi.mocked(calculateTotals).mockReturnValue({ totalSize: 300000, count: 2, averageSize: 150000 });
 
+            const state = createInitialWatchState();
+            const options: WatchOptions = { path: testDir, onClean: true, dryRun: true };
+
+            const result = await performScan(testDir, options, undefined, state);
+
+            expect(result.found).toBe(2);
+            expect(result.cleaned).toBe(0);
+            expect(cleanNodeModules).not.toHaveBeenCalled();
+        });
+
+        it('should apply age filter', async () => {
+            vi.mocked(scanNodeModules).mockResolvedValue(mockFolders);
+            vi.mocked(calculateTotals).mockReturnValue({ totalSize: 200000, count: 1, averageSize: 200000 });
+
+            const state = createInitialWatchState();
+            const options: WatchOptions = { path: testDir };
+
+            // Filter to only include folders older than 50 days (only project2)
+            const result = await performScan(testDir, options, 50, state);
+
+            expect(result.found).toBe(1); // Only project2 with 60 days
+        });
+
+        it('should handle scan errors gracefully', async () => {
+            vi.mocked(scanNodeModules).mockRejectedValue(new Error('Scan failed'));
+
+            const state = createInitialWatchState();
+            const options: WatchOptions = { path: testDir };
+
+            const result = await performScan(testDir, options, undefined, state);
+
+            expect(result).toEqual({ found: 0, cleaned: 0, freed: 0 });
+        });
+
+        it('should update lastScan timestamp', async () => {
+            vi.mocked(scanNodeModules).mockResolvedValue(mockFolders);
+            vi.mocked(calculateTotals).mockReturnValue({ totalSize: 300000, count: 2, averageSize: 150000 });
+
+            const state = createInitialWatchState();
+            const before = new Date();
+
+            await performScan(testDir, { path: testDir }, undefined, state);
+
+            const after = new Date();
+            expect(state.lastScan).toBeInstanceOf(Date);
+            expect(state.lastScan!.getTime()).toBeGreaterThanOrEqual(before.getTime());
+            expect(state.lastScan!.getTime()).toBeLessThanOrEqual(after.getTime());
+        });
+    });
+
+    describe('performAutoClean', () => {
+        const mockFolders: NodeModulesInfo[] = [
+            {
+                path: '/test/project1/node_modules',
+                projectPath: '/test/project1',
+                size: 100000,
+                lastModified: new Date(),
+                packageCount: 50,
+                hasPackageLock: true,
+                hasYarnLock: false,
+                hasPnpmLock: false,
+                ageDays: 45,
+            },
+        ];
+
+        it('should clean folders and return result', async () => {
             vi.mocked(cleanNodeModules).mockResolvedValue({
-                deletedCount: 0,
-                freedBytes: 0,
-                deletedPaths: [],
-                errors: [{ path: '/a/node_modules', message: 'Permission denied' }],
+                deletedCount: 1,
+                freedBytes: 100000,
+                deletedPaths: ['/test/project1/node_modules'],
+                errors: [],
             });
 
-            const result = await cleanNodeModules(mockFolders, { fast: true });
+            const state = createInitialWatchState();
+            const result = await performAutoClean(mockFolders, state);
 
-            expect(result.errors).toHaveLength(1);
-            expect(result.errors[0].message).toBe('Permission denied');
-        });
-    });
-
-    describe('interval calculation', () => {
-        it('should default to 60 seconds', () => {
-            const defaultInterval = 60000;
-            const customInterval: number | undefined = undefined;
-            const interval = customInterval ?? defaultInterval;
-            expect(interval).toBe(60000);
+            expect(result.cleaned).toBe(1);
+            expect(result.freed).toBe(100000);
+            expect(state.totalCleaned).toBe(1);
+            expect(state.totalFreed).toBe(100000);
         });
 
-        it('should use custom interval', () => {
-            const defaultInterval = 60000;
-            const customInterval = 30000;
-            const interval = customInterval || defaultInterval;
-            expect(interval).toBe(30000);
-        });
-    });
+        it('should accumulate stats across multiple cleanups', async () => {
+            vi.mocked(cleanNodeModules).mockResolvedValue({
+                deletedCount: 1,
+                freedBytes: 100000,
+                deletedPaths: ['/test/project1/node_modules'],
+                errors: [],
+            });
 
-    describe('parseDuration for olderThan', () => {
-        it('should parse days', () => {
-            const result = parseDuration('30d');
-            expect(result).toBe(30);
-        });
+            const state = createInitialWatchState();
 
-        it('should parse months', () => {
-            const result = parseDuration('3m');
-            expect(result).toBe(3);
-        });
-    });
-});
+            await performAutoClean(mockFolders, state);
+            await performAutoClean(mockFolders, state);
 
-describe('watch command edge cases', () => {
-    it('should handle empty scan results', async () => {
-        vi.mocked(scanNodeModules).mockResolvedValue([]);
-        vi.mocked(calculateTotals).mockReturnValue({
-            totalFolders: 0,
-            totalSize: 0,
-            oldestAge: 0,
-            newestAge: 0,
+            expect(state.totalCleaned).toBe(2);
+            expect(state.totalFreed).toBe(200000);
         });
 
-        const folders = await scanNodeModules({ path: '/empty', quick: true });
-        expect(folders).toHaveLength(0);
-    });
+        it('should handle clean errors gracefully', async () => {
+            vi.mocked(cleanNodeModules).mockRejectedValue(new Error('Clean failed'));
 
-    it('should handle scan errors gracefully', async () => {
-        vi.mocked(scanNodeModules).mockRejectedValue(new Error('Directory not found'));
+            const state = createInitialWatchState();
+            const result = await performAutoClean(mockFolders, state);
 
-        await expect(scanNodeModules({ path: '/nonexistent', quick: true }))
-            .rejects.toThrow('Directory not found');
-    });
-
-    it('should display limited folders (max 5)', () => {
-        const folders: NodeModulesInfo[] = Array.from({ length: 10 }, (_, i) => ({
-            path: `/project${i}/node_modules`,
-            projectPath: `/project${i}`,
-            size: 1000 * i,
-            lastModified: new Date(),
-            packageCount: 10 * i,
-            hasPackageLock: true,
-            hasYarnLock: false,
-            hasPnpmLock: false,
-            ageDays: i * 10,
-        }));
-
-        const displayedFolders = folders.slice(0, 5);
-        const remainingCount = folders.length - 5;
-
-        expect(displayedFolders).toHaveLength(5);
-        expect(remainingCount).toBe(5);
+            expect(result).toEqual({ cleaned: 0, freed: 0 });
+        });
     });
 });

@@ -13,7 +13,7 @@ export interface ScheduleOptions {
     depth?: number;
 }
 
-interface ScheduleStats {
+export interface ScheduleStats {
     lastRun: Date | null;
     totalRuns: number;
     totalCleaned: number;
@@ -21,17 +21,30 @@ interface ScheduleStats {
 }
 
 /**
- * Start a scheduled cleanup job
+ * Create initial stats object
  */
-export function startSchedule(options: ScheduleOptions): void {
-    const stats: ScheduleStats = {
+export function createInitialStats(): ScheduleStats {
+    return {
         lastRun: null,
         totalRuns: 0,
         totalCleaned: 0,
         totalFreed: 0,
     };
+}
 
-    const olderThanDays = options.olderThan ? parseDuration(options.olderThan) : undefined;
+/**
+ * Parse olderThan option to days
+ */
+export function parseOlderThanDays(olderThan?: string): number | undefined {
+    return olderThan ? parseDuration(olderThan) : undefined;
+}
+
+/**
+ * Start a scheduled cleanup job
+ */
+export function startSchedule(options: ScheduleOptions): void {
+    const stats = createInitialStats();
+    const olderThanDays = parseOlderThanDays(options.olderThan);
 
     console.log(chalk.cyan('📅 Scheduled Cleanup Started'));
     console.log(chalk.gray(`Path: ${options.path}`));
@@ -74,13 +87,13 @@ export function startSchedule(options: ScheduleOptions): void {
 }
 
 /**
- * Run the scheduled cleanup task
+ * Run the scheduled cleanup task (exported for testing)
  */
-async function runScheduledCleanup(
+export async function runScheduledCleanup(
     options: ScheduleOptions,
     olderThanDays: number | undefined,
     stats: ScheduleStats
-): Promise<void> {
+): Promise<{ cleaned: number; freed: number; errors: number }> {
     const timestamp = new Date().toLocaleString();
     console.log(chalk.cyan(`\n[${timestamp}] Running scheduled cleanup...`));
 
@@ -101,7 +114,7 @@ async function runScheduledCleanup(
 
         if (folders.length === 0) {
             console.log(chalk.green('✓ No folders to clean'));
-            return;
+            return { cleaned: 0, freed: 0, errors: 0 };
         }
 
         const totals = calculateTotals(folders);
@@ -112,7 +125,7 @@ async function runScheduledCleanup(
             folders.slice(0, 5).forEach(f => {
                 console.log(chalk.gray(`  → ${f.projectPath} (${f.ageDays}d)`));
             });
-            return;
+            return { cleaned: 0, freed: 0, errors: 0 };
         }
 
         // Perform cleanup
@@ -126,9 +139,16 @@ async function runScheduledCleanup(
         if (result.errors.length > 0) {
             console.log(chalk.red(`✗ ${result.errors.length} errors`));
         }
+
+        return {
+            cleaned: result.deletedCount,
+            freed: result.freedBytes,
+            errors: result.errors.length,
+        };
     } catch (error) {
         console.log(chalk.red('✗ Cleanup failed'));
         logger.debug(error instanceof Error ? error.message : String(error));
+        return { cleaned: 0, freed: 0, errors: 1 };
     }
 }
 
@@ -136,14 +156,8 @@ async function runScheduledCleanup(
  * Run cleanup once (for manual/immediate trigger)
  */
 export async function runOnce(options: Omit<ScheduleOptions, 'cron'>): Promise<void> {
-    const stats: ScheduleStats = {
-        lastRun: null,
-        totalRuns: 0,
-        totalCleaned: 0,
-        totalFreed: 0,
-    };
-
-    const olderThanDays = options.olderThan ? parseDuration(options.olderThan) : undefined;
+    const stats = createInitialStats();
+    const olderThanDays = parseOlderThanDays(options.olderThan);
     await runScheduledCleanup({ ...options, cron: '' }, olderThanDays, stats);
 }
 
@@ -159,5 +173,8 @@ export const cronPresets = {
 export default {
     startSchedule,
     runOnce,
+    runScheduledCleanup,
+    createInitialStats,
+    parseOlderThanDays,
     cronPresets,
 };
