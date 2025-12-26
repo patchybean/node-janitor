@@ -10,6 +10,7 @@ import {
 import { getAgeDays } from '../utils/formatter.js';
 import { getGitStatus } from '../utils/git-utils.js';
 import logger from '../utils/logger.js';
+import { scanNodeModulesFast } from './fast-scanner.js';
 
 // Folders to skip when scanning
 const SKIP_FOLDERS = new Set([
@@ -27,8 +28,32 @@ const SKIP_FOLDERS = new Set([
 
 /**
  * Scan for node_modules folders
+ * Uses fast native scanner by default, falls back to JS scanner on error
  */
 export async function scanNodeModules(
+    options: ScanOptions,
+    onProgress?: (current: number, found: number, path: string) => void
+): Promise<NodeModulesInfo[]> {
+    // Try fast scanner first (uses native find command)
+    try {
+        const fastResults = await scanNodeModulesFast(options, onProgress);
+        if (fastResults.length > 0 || options.quick) {
+            return fastResults;
+        }
+        // If no results, try JS scanner as fallback
+        logger.debug('Fast scanner returned 0 results, trying JS scanner');
+    } catch (error) {
+        logger.debug(`Fast scanner failed, using JS fallback: ${error}`);
+    }
+
+    // Fallback to JS scanner
+    return scanNodeModulesJS(options, onProgress);
+}
+
+/**
+ * Original JS-based scanner (fallback)
+ */
+async function scanNodeModulesJS(
     options: ScanOptions,
     onProgress?: (current: number, found: number, path: string) => void
 ): Promise<NodeModulesInfo[]> {
