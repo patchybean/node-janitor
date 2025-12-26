@@ -24,7 +24,7 @@ import { formatBytes, parseDuration } from './utils/formatter.js';
 import { setLanguage } from './utils/i18n.js';
 import type { NodeModulesInfo, GlobalOptions } from './types/index.js';
 
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 
 // ASCII Art Banner
 const BANNER = chalk.cyan(`

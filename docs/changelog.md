@@ -7,20 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.2.0] - Unreleased
+## [1.2.0] - 2024-12-26
 
 ### Added
 
 - 🖥️ **Interactive TUI Mode** - Full-screen, keyboard-navigable interface
+  - New `--live` flag and `tui` subcommand
   - Arrow keys / j/k navigation
   - Multi-select with Space bar
   - Select all with 'A'
   - Sort toggle (size/age) with 'S'
   - Color-coded age display (green, yellow, red)
 - 📚 **ReadTheDocs Documentation** - Comprehensive docs with Material theme
+- 📊 **Performance Benchmarks** - Verify and compare performance
 
 ### Changed
 
+- ⚡ **3x Faster Scanning** - Native `find` command + parallel metadata collection
+  - 10 folders: 124ms (was 293ms)
+  - 25 folders: 135ms (was 409ms)
+  - 50 folders: 152ms (was 695ms)
 - Improved test coverage to 90%+
 - Refactored schedule and watch commands for better testability
 
@@ -92,7 +98,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |---------|------|------------|
-| 1.2.0 | Upcoming | TUI Mode, Documentation |
+| 1.2.0 | 2024-12-26 | TUI Mode, 3x Faster, Documentation |
 | 1.1.0 | 2024-12-17 | Watch, Schedule, Config, i18n, Git-aware |
 | 1.0.0 | 2024-12-10 | Initial release |
 
