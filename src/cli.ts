@@ -5,6 +5,7 @@ import { cleanNodeModules } from './core/cleaner.js';
 import { deepClean } from './core/deep-cleaner.js';
 import { startWatch } from './commands/watch.js';
 import { startSchedule, cronPresets } from './commands/schedule.js';
+import { startLiveView } from './tui/live-view.js';
 import { loadConfig, mergeOptions } from './core/config.js';
 import { createSpinner } from './ui/spinner.js';
 import { createFoldersTable, createSummaryTable, createBreakdownTable } from './ui/table.js';
@@ -66,6 +67,7 @@ export function createProgram(): Command {
         .option('--skip-dirty-git', 'Skip folders with uncommitted git changes')
         .option('--git-only', 'Only process folders inside git repositories')
         .option('--lang <language>', 'Language for output (en, vi, zh, ja, ko, es, fr, de)')
+        .option('-l, --live', 'Interactive TUI mode with keyboard navigation')
         .action(async (options) => {
             await mainAction(options);
         });
@@ -112,6 +114,19 @@ export function createProgram(): Command {
             await scheduleAction(options);
         });
 
+    // TUI sub-command
+    program
+        .command('tui')
+        .description('🖥️  Interactive TUI mode with keyboard navigation')
+        .option('-p, --path <path>', 'Directory to scan', process.cwd())
+        .option('-d, --depth <number>', 'Maximum depth to scan', parseInt)
+        .action(async (options) => {
+            await startLiveView({
+                path: (options.path as string) || process.cwd(),
+                depth: options.depth as number | undefined,
+            });
+        });
+
     return program;
 }
 
@@ -138,6 +153,15 @@ async function mainAction(options: GlobalOptions & Record<string, unknown>): Pro
     // Interactive mode
     if (options.interactive) {
         await interactiveMode();
+        return;
+    }
+
+    // Live TUI mode
+    if (options.live) {
+        await startLiveView({
+            path: (options.path as string) || process.cwd(),
+            depth: options.depth as number | undefined,
+        });
         return;
     }
 

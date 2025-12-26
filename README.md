@@ -52,6 +52,41 @@ node-janitor --older-than 30d
 node-janitor --interactive
 ```
 
+## 🖥️ Interactive TUI Mode (NEW!)
+
+Launch a full-screen, keyboard-navigable interface similar to npkill:
+
+```bash
+# Start TUI mode
+node-janitor --live
+
+# Or use the tui subcommand
+node-janitor tui --path ~/projects
+```
+
+**Features:**
+- ⌨️ **Keyboard Navigation** - Use arrow keys or j/k to navigate
+- ☑️ **Multi-select** - Press SPACE to select/deselect folders
+- 🔄 **Sort toggle** - Press S to switch between size/age sorting
+- 🎨 **Color-coded** - Green (new), Yellow (medium), Red (old)
+- 🗑️ **Quick delete** - Press D to delete selected folders
+- 📊 **Real-time stats** - See total size and selection count
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  🧹 NODE JANITOR - Interactive Mode                               │
+├──────────────────────────────────────────────────────────────────┤
+│  📊 Found: 15 folders | Total: 2.5 GB | Selected: 3 (523 MB)     │
+├──────────────────────────────────────────────────────────────────┤
+│  > ■ ~/projects/old-app/node_modules          523 MB    180 days │
+│    □ ~/projects/test-project/node_modules     312 MB     95 days │
+│    ■ ~/projects/archived/node_modules         245 MB     45 days │
+│    □ ~/projects/client-work/node_modules      198 MB     30 days │
+├──────────────────────────────────────────────────────────────────┤
+│  [↑/↓] Navigate  [SPACE] Select  [A] All  [S] Sort  [D] Delete   │
+└──────────────────────────────────────────────────────────────────┘
+```
+
 ## 📖 Usage
 
 ### Basic Commands
